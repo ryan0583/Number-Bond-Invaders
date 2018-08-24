@@ -13,9 +13,10 @@ import javax.swing.JFrame;
 
 public class Ship 
 {
+	public static final int BASE_POS = 50;
+	
 	private int posX = -1;
 	private int posY = -1;
-	private int basePos = 50;
 	private Image img = null;
 	private int width = -1;
 	private int height = -1;
@@ -57,27 +58,28 @@ public class Ship
 		{
 			posX = frame.getWidth() - width;
 		}
-		posY = frame.getHeight() - basePos - height;
+		posY = frame.getHeight() - BASE_POS - height;
 		
 		g2d.drawImage(img, posX, posY, null);
 	}
 	
 	public boolean hit(Baddie bad)
 	{
-		boolean retval = false;
+		return false;
+		/*boolean retval = false;
 		if (posY == -1)
 		{
 			return retval;
 		}
 		
-		if (bad.getPosY() + bad.getHeight() >= posY
+		if (bad.getPosY() + Baddie.HEIGHT >= posY
 		  && (bad.getPosX() <= posX + width
-		  || bad.getPosX() + bad.getWidth() >= posX))
+		  || bad.getPosX() + Baddie.WIDTH >= posX))
 		{
 			retval = true;
 		}
 		
-		return retval;
+		return retval;*/
 	}
 	
 	public boolean hit(Bullet b)

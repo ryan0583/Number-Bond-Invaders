@@ -4,6 +4,8 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PointerInfo;
@@ -28,25 +30,24 @@ import javazoom.jl.player.Player;
 public class GameFrame extends JPanel 
 					   implements MouseListener
 {
-	private static final long serialVersionUID = 1;
-	private static final int BADDIES_PER_ROW = 15;
-	private static final int BADDIE_ROWS = 5;
-	private static final int BULLET_CHANCE = 1000;
-	private static final int STARS = 100;
-	private static final int MAX_BULLETS = 3;
 	public static int HEIGHT = 750;
-	private static int WIDTH = 1375;
+	public static int WIDTH = 1375;
+	
+	private static final long serialVersionUID = 1;
+	private static final int STARS = 100;
+	private static final int MAX_BULLETS = 10;
 	private static final int START_RECT_X = (int)((WIDTH / 2.73) + 55);
 	private static final int START_RECT_Y = HEIGHT / 2 - 70;
 	private static final int START_RECT_WIDTH = 200;
 	private static final int START_RECT_HEIGHT = 100;
-	
+	private static final int MAX_SUM_ANS = 20;
+	private static final int MAX_BADDIE_SPEED = 1;
+	private static final int TOP_BAR_HEIGHT = 150;
 	
 	private static JFrame frame = null;
 	private Ship ship = null;
 	private ArrayList<Bullet> bullets = new ArrayList<Bullet>();
-	private ArrayList<Bullet> baddieBullets = new ArrayList<Bullet>();
-	private ArrayList<ArrayList<Baddie>> baddies = new ArrayList<ArrayList<Baddie>>();
+	private ArrayList<Baddie> baddies = new ArrayList<Baddie>();
 	private ArrayList<Explosion> exps = new ArrayList<Explosion>();
 	private ArrayList<Star> stars = new ArrayList<Star>();
 	private boolean gameStarted = false;
@@ -56,14 +57,21 @@ public class GameFrame extends JPanel
 	private int flashCount = 0;
 	private int doneTimer = 0;
 	private int score = 0;
+	private Sum sum = null;
+	private ArrayList<Integer> answers = new ArrayList<Integer>();
 	
 	public static void initGameFrame() throws InterruptedException
 	{
 		frame = new JFrame("Invaders");
 		frame.setUndecorated(true);
+		GraphicsEnvironment e = GraphicsEnvironment.getLocalGraphicsEnvironment();
+		GraphicsDevice gd = e.getDefaultScreenDevice();
+		frame.setResizable(false);
+		gd.setFullScreenWindow(frame);
+		
 		GameFrame gf = new GameFrame();
 		frame.getContentPane().add(gf);
-		frame.setSize(WIDTH, HEIGHT);
+		//frame.setSize(WIDTH, HEIGHT);
 		frame.setVisible(true);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setResizable(false);
@@ -94,14 +102,13 @@ public class GameFrame extends JPanel
 		
 		ship = Ship.factory();
 		
-		int baddiePositionY = 100;
-		boolean moveRight = true;
-		for (int i=0; i<BADDIE_ROWS; i++)
+		for (int i=0; i<MAX_SUM_ANS; i++)
 		{
-			addBaddies(baddiePositionY, moveRight);
-			baddiePositionY += 100;
-			moveRight = !moveRight;
+			int num = i;
+			addBaddie(num);
 		}
+		
+		newSum();
 		
 		for (int i=0; i<STARS; i++)
 		{
@@ -127,7 +134,7 @@ public class GameFrame extends JPanel
 				}
 			}
 			
-			Thread.sleep(30);
+			Thread.sleep(15);
 		}	
 		
 		gameStarted = false;
@@ -143,35 +150,46 @@ public class GameFrame extends JPanel
 		doneTimer = 0;
 		bullets.clear();
 		baddies.clear();
-		baddieBullets.clear();
 		stars.clear();
 		exps.clear();
 		score = 0;
+		sum = null;
+		answers.clear();
 	}
 	
-	private void addBaddies(int baddiePositionY, boolean moveRight)
+	private void addBaddie(int num)
 	{
-		ArrayList<Baddie> baddieRow = new ArrayList<Baddie>();
-		int posX = 30;
-		if (!moveRight)
+		int posX = (int)(WIDTH * Math.random());
+		int posY = (int)(HEIGHT * Math.random());
+		int maxPosY = HEIGHT - Ship.BASE_POS - ship.getHeight();
+		if (posY < TOP_BAR_HEIGHT)
 		{
-			posX = WIDTH - 30;
+			posY = TOP_BAR_HEIGHT;
 		}
-		for (int i=0; i<BADDIES_PER_ROW; i++)
+		else if (posY > maxPosY)
 		{
-			Baddie bad = Baddie.factory(posX, baddiePositionY, moveRight);
-			baddieRow.add(bad);
-			if (moveRight)
-			{
-				posX += 2 * bad.getWidth();
-			}
-			else
-			{
-				posX -= 2 * bad.getWidth();
-			}
+			posY = maxPosY;
 		}
 		
-		baddies.add(baddieRow);
+		double backwardsD = Math.random();
+		boolean backwards = backwardsD > 0.5;
+		int backMultiplier = 1;
+		if (backwards)
+		{
+			backMultiplier = -1;
+		}
+		int speedX = (int)(backMultiplier * MAX_BADDIE_SPEED * Math.random()) + (backMultiplier * 1);
+		double upD = Math.random();
+		boolean up = upD > 0.5;
+		int upMultiplier = 1;
+		if (up)
+		{
+			upMultiplier = -1;
+		}
+		int speedY = (int)(upMultiplier * MAX_BADDIE_SPEED * Math.random()) + (upMultiplier * 1);
+		
+		Baddie bad = Baddie.factory(posX, posY, speedX, speedY, num);
+		baddies.add(bad);
 	}
 	
 	@Override public void paint(Graphics g)
@@ -179,8 +197,7 @@ public class GameFrame extends JPanel
 		super.paint(g);
 		
 		Graphics2D g2d = (Graphics2D)g;
-		g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-		RenderingHints.VALUE_ANTIALIAS_ON);
+		g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		
 		drawStars(g2d);
 		
@@ -207,13 +224,15 @@ public class GameFrame extends JPanel
 		
 		drawScore(g2d);
 		
+		drawSum(g2d);
+		
+		drawExplosions(g2d);
+		
 		drawShip(g2d);
 		
 		drawBullets(g2d);
-
-		drawBaddies(g2d);
 		
-		drawExplosions(g2d);
+		drawBaddies(g2d);
 	}
 
 	private void drawScore(Graphics2D g2d)
@@ -221,6 +240,13 @@ public class GameFrame extends JPanel
 		g2d.setColor(Color.WHITE);
 		g2d.setFont(new Font("Arial", Font.PLAIN, 18)); 
 		g2d.drawString("SCORE: " + score, frame.getWidth() - 200, 30);
+	}
+	
+	private void drawSum(Graphics2D g2d)
+	{
+		g2d.setColor(Color.WHITE);
+		g2d.setFont(new Font("Arial", Font.PLAIN, 50)); 
+		g2d.drawString("" + sum, frame.getWidth()/2 - 200, 40);
 	}
 	
 	private void drawStars(Graphics2D g2d)
@@ -258,27 +284,28 @@ public class GameFrame extends JPanel
 	
 	private void removeBaddies(Bullet b)
 	{
-		for (int j=baddies.size()-1; j>=0; j--)
+		boolean hitBaddie = false;
+		for (int i=baddies.size()-1; i>=0; i--)
 		{
-			ArrayList<Baddie> baddieRow = baddies.get(j);
-			for (int k=baddieRow.size()-1; k>=0; k--)
+			Baddie bad = baddies.get(i);
+			if (bad.hit(b, sum))
 			{
-				Baddie bad = baddieRow.get(k);
-				if (bad.hit(b))
-				{
-					score += 100;
-					playSound("explosion_large_distant.mp3");
-					Explosion exp = Explosion.factory(bad.getPosX() - bad.getWidth()/2, bad.getPosY(), bad.getHeight(), bad.getWidth());
-					exps.add(exp);
-					
-					baddieRow.remove(bad);
-					if (baddieRow.size() == 0)
-					{
-						baddies.remove(baddieRow);
-					}
-					bullets.remove(b);
-				}
+				score += 100;
+				playSound("explosion_large_distant.mp3");
+				Explosion exp = Explosion.factory(bad.getPosX() - Baddie.WIDTH/2, bad.getPosY() - Baddie.HEIGHT/2, Baddie.HEIGHT, Baddie.WIDTH);
+				exps.add(exp);
+				
+				baddies.remove(bad);
+				bullets.remove(b);
+				
+				addBaddie(bad.getNum());
+				hitBaddie = true;
 			}
+		}
+		
+		if (hitBaddie)
+		{
+			newSum();
 		}
 	}
 	
@@ -286,63 +313,9 @@ public class GameFrame extends JPanel
 	{
 		for (int i=0; i<baddies.size(); i++)
 		{
-			ArrayList<Baddie> baddieRow = baddies.get(i);
-			Baddie leftMost = null;
-			Baddie rightMost = null;
-			for (int j=0; j<baddieRow.size(); j++)
-			{
-				Baddie bad = baddieRow.get(j);
-				int xPos = bad.getPosX();
-				if (leftMost == null
-				  || xPos < leftMost.getPosX())
-				{
-					leftMost = bad;
-				}
-				if (rightMost == null
-				  || xPos > rightMost.getPosX())
-				{
-					rightMost = bad;
-				}
-			}
-			
-			boolean changeDir = false;
-			if ((leftMost != null && leftMost.changeDir(frame))
-			  || (rightMost != null && rightMost.changeDir(frame)))
-			{
-				changeDir = true;
-			}
-			
-			for (int j=0; j<baddieRow.size(); j++)
-			{
-				Baddie bad = baddieRow.get(j);
-				bad.draw(g2d, frame);
-				bad.move(changeDir);
-				
-				int posX = bad.getPosX();
-				int posY = bad.getPosY();
-				int width = bad.getWidth();
-				int height = bad.getHeight();
-				int rand1 = (int)(BULLET_CHANCE * Math.random());
-				int rand2 = (int)(BULLET_CHANCE * Math.random());
-				if (rand1 == rand2)
-				{
-					playSound("science_fiction_laser_006.mp3");
-					
-					Bullet b = Bullet.factoryBad(posX + (width/2), posY + height);
-					baddieBullets.add(b);
-				}
-			}
-		}
-		
-		for (int i=baddieBullets.size() - 1; i>= 0; i--)
-		{
-			Bullet b = baddieBullets.get(i);
-			b.draw(g2d);
-			b.move();
-			if (b.getPosY() + b.getLength() >= frame.getHeight())
-			{
-				bullets.remove(b);
-			}
+			Baddie bad = baddies.get(i);
+			bad.draw(g2d);
+			bad.move(HEIGHT - ship.getHeight() - Ship.BASE_POS, 0 + TOP_BAR_HEIGHT);
 		}
 	}
 
@@ -385,7 +358,7 @@ public class GameFrame extends JPanel
 	{
 		g2d.setColor(Color.WHITE);
 		g2d.setFont(new Font("Arial", Font.ITALIC, 72)); 
-		g2d.drawString("SPACE INVADERS", frame.getWidth() / 4, frame.getHeight() / 4);
+		g2d.drawString("NUMBER BOND INVADERS", frame.getWidth() / 6, frame.getHeight() / 4);
 		
 		g2d.setColor(Color.RED);
 		g2d.fillRect(START_RECT_X, START_RECT_Y, START_RECT_WIDTH, START_RECT_HEIGHT);
@@ -431,6 +404,31 @@ public class GameFrame extends JPanel
 		return;
 	}
 	
+	private void newSum()
+	{
+		double operatorRand = Math.random();
+		int operator = Sum.ADD;
+		if (operatorRand > 0.5)
+		{
+			operator = Sum.SUBTRACT;
+		}
+		
+		int ans = -1;
+		int num1 = -1;
+		if (operator == Sum.ADD)
+		{
+			ans = (int)(Math.random() * MAX_SUM_ANS) + 1;
+			num1 = (int)(Math.random() * ans) + 1;
+		}
+		else if (operator == Sum.SUBTRACT)
+		{
+			num1 = (int)(Math.random() * MAX_SUM_ANS) + 1;
+			ans = (int)(Math.random() * num1) + 1;
+		}
+		
+		sum = Sum.factory(num1, ans, operator);
+	}
+	
 	private void isGameWon()
 	{
 		if (gameWon)
@@ -453,26 +451,8 @@ public class GameFrame extends JPanel
 		{
 			for (int i=0; i<baddies.size(); i++)
 			{
-				ArrayList<Baddie> baddieRow = baddies.get(i);
-				for (int j=0; j<baddieRow.size(); j++)
-				{
-					Baddie bad = baddieRow.get(j);
-					gameOver = ship.hit(bad);
-					if (gameOver)
-					{
-						break;
-					}
-				}
-				if (gameOver)
-				{
-					break;
-				}
-			}
-			
-			for (int i=0; i<baddieBullets.size(); i++)
-			{
-				Bullet b = baddieBullets.get(i);
-				gameOver = ship.hit(b);
+				Baddie bad =  baddies.get(i);
+				gameOver = ship.hit(bad);
 				if (gameOver)
 				{
 					break;
