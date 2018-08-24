@@ -3,7 +3,7 @@ package invaders;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
-import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
@@ -30,14 +30,14 @@ public class Explosion
 		
 		try
 		{
-			File f = new File("exp1.png");
-			BufferedImage bi = ImageIO.read(f);
+			URL url = Explosion.class.getResource("/exp1.png");
+			BufferedImage bi = ImageIO.read(url);
 			retval.imgs.add(bi);
-			File f2 = new File("exp2.png");
-			BufferedImage bi2 = ImageIO.read(f2);
+			URL url2 = Explosion.class.getResource("/exp2.png");
+			BufferedImage bi2 = ImageIO.read(url2);
 			retval.imgs.add(bi2);
-			File f3 = new File("exp3.png");
-			BufferedImage bi3 = ImageIO.read(f3);
+			URL url3 = Explosion.class.getResource("/exp3.png");
+			BufferedImage bi3 = ImageIO.read(url3);
 			retval.imgs.add(bi3);
 		}
 		catch (Throwable t)

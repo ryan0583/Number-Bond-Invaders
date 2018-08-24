@@ -6,17 +6,16 @@ import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PointerInfo;
 import java.awt.image.BufferedImage;
-import java.io.File;
+import java.net.URL;
 
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 
 public class Ship 
 {
-	public static final int BASE_POS = 50;
-	
 	private int posX = -1;
 	private int posY = -1;
+	private int basePos = 50;
 	private Image img = null;
 	private int width = -1;
 	private int height = -1;
@@ -26,8 +25,8 @@ public class Ship
 		Ship retval = new Ship();
 		try
 		{
-			File f = new File("ship.png");
-			BufferedImage bi = ImageIO.read(f);
+			URL url = Ship.class.getResource("/ship.png");
+			BufferedImage bi = ImageIO.read(url);
 			retval.img = bi;
 			retval.width = bi.getWidth();
 			retval.height = bi.getHeight();
@@ -58,28 +57,27 @@ public class Ship
 		{
 			posX = frame.getWidth() - width;
 		}
-		posY = frame.getHeight() - BASE_POS - height;
+		posY = frame.getHeight() - basePos - height;
 		
 		g2d.drawImage(img, posX, posY, null);
 	}
 	
 	public boolean hit(Baddie bad)
 	{
-		return false;
-		/*boolean retval = false;
+		boolean retval = false;
 		if (posY == -1)
 		{
 			return retval;
 		}
 		
-		if (bad.getPosY() + Baddie.HEIGHT >= posY
+		if (bad.getPosY() + bad.getHeight() >= posY
 		  && (bad.getPosX() <= posX + width
-		  || bad.getPosX() + Baddie.WIDTH >= posX))
+		  || bad.getPosX() + bad.getWidth() >= posX))
 		{
 			retval = true;
 		}
 		
-		return retval;*/
+		return retval;
 	}
 	
 	public boolean hit(Bullet b)
